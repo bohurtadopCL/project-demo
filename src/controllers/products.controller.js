@@ -4,15 +4,25 @@ const Categories = require('../enums/categories');
 
 // Looks if category name is provided and then compares with valid categories
 function isAValidCategory(req) {
-    categoryName = req.body.category ? req.body.category : null
+    categoryName = req.body.category ? req.body.category : null;
     return categoryName ? Categories.includes(categoryName) : false;
+}
+
+// Looks if product code already exists on database
+async function codeAlreadyExists(req) {
+    productCode = req.body.code ? req.body.code : null;
+    oldProduct = productCode ? await Product.findOne({
+        code: productCode
+    }) : true;
+    return oldProduct ? true : false;
 }
 
 // Create a new product
 exports.save = async function (req, res) {
     console.log('\t', req.method, '\t', req.originalUrl);
     try {
-        if (!isAValidCategory(req)) res.status(400).send('Invalid category');
+        if (await codeAlreadyExists(req)) res.status(400).send('Invalid product code');
+        else if (!isAValidCategory(req)) res.status(400).send('Invalid category');
         else {
             const newProduct = new Product(req.body);
             newProduct.save().then(r => {
@@ -55,8 +65,11 @@ exports.findById = async function (req, res) {
     try {
         if (mongoose.Types.ObjectId.isValid(req.params._id)) {
             let product = await Product.findById(req.params);
-            product._doc = { href: req.originalUrl, ...product._doc };
-            res.send(product);
+            if (!product) res.status(404).send('Product not found')
+            else {
+                product._doc = { href: req.originalUrl, ...product._doc };
+                res.send(product);
+            }
         } else {
             res.status(400).send('Invalid product id');
         }
@@ -70,7 +83,8 @@ exports.findById = async function (req, res) {
 exports.update = async function (req, res) {
     console.log('\t', req.method, '\t', req.originalUrl);
     try {
-        if (!isAValidCategory(req)) res.status(400).send('Invalid category');
+        if (await codeAlreadyExists(req)) res.status(400).send('Invalid product code');
+        else if (!isAValidCategory(req)) res.status(400).send('Invalid category');
         else {
             Product.findByIdAndUpdate(req.params, req.body).then(() => res.send()
             ).catch(err => {

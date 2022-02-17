@@ -8,13 +8,18 @@ const ShoppingCarSchema = new Schema({
     },
     totalPrice: {
         type: String,
-        required: true,
+        required: false,
     },
     products: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'product',
-        required: true,
-        quantity: Number
+        id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'product',
+            required: false,
+        },
+        quantity: {
+            type: Number,
+            required: true
+        }
     }]
 }, {
     versionKey: false,
