@@ -1,0 +1,11 @@
+{
+    "name": "DEMO Project",
+    "version": "1.0.0",
+    "author": "Brayan Hurtado",
+    "description": "API for demo training project / Shopping car",
+    "repository": "https://github.com/bohurtadopCL/project-demo",
+    "end-points": {
+        "product_url": "api/v1/products{/id}",
+        "shopping_car_url": "api/v1/shoppingCar{/id}"
+    }
+}
