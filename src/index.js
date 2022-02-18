@@ -1,10 +1,10 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const config = require('config');
+const apiRouter = require('./routes/index');
 
 const app = express();
 const db = config.get('mongoURI');
-const apiRouter = require('./routes/index');
 
 const shoppingCar = require('./models/ShoppingCar');
 const Product = require('./models/Product');

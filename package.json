@@ -12,8 +12,13 @@
   "dependencies": {
     "@condor-labs/logger": "^1.1.0",
     "@condor-labs/mongodb": "^1.1.3",
+    "@condor-labs/redis": "^1.0.4",
     "config": "^3.3.7",
     "express": "^4.17.2",
-    "mongoose": "^6.2.1"
+    "express-graphql": "^0.12.0",
+    "graphql": "^15.8.0",
+    "graphql-tools": "^8.2.0",
+    "mongoose": "^6.2.1",
+    "pm2": "^5.2.0"
   }
 }

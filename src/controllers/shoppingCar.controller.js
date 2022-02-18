@@ -198,7 +198,7 @@ exports.update = async function (req, res) {
 }
 
 // Deletes a shopping car by an id provided
-exports.delete = async function (req, res) {
+exports.deleteShoppingCar = async function (req, res) {
     console.log('\t', req.method, '\t', req.originalUrl);
     try {
         if (mongoose.Types.ObjectId.isValid(req.params._id)) {
@@ -245,6 +245,7 @@ exports.addProduct = async function (req, res) {
     }
 }
 
+// Deletes a given quantity of a product in a shopping car
 exports.deleteProduct = async function (req, res) {
     console.log('\t', req.method, '\t', req.originalUrl);
     try {
