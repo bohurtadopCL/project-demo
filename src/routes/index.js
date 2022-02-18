@@ -11,12 +11,15 @@ apiRouter.use('/products', productRoutes);
 apiRouter.use('/shoppingCars', shoppingCarRoutes);
 
 apiRouter.get('/', (req, res) => {
-    res.send(entry_point_response)
-})
+  res.send(entry_point_response);
+});
 
-apiRouter.use('/graphql', graphqlHTTP({
+apiRouter.use(
+  '/graphql',
+  graphqlHTTP({
     graphiql: true,
-    schema: schema
-}))
+    schema: schema,
+  })
+);
 
 module.exports = apiRouter;

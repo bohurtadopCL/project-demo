@@ -9,6 +9,6 @@ const typeDefs = `
 `;
 
 module.exports = makeExecutableSchema({
-    typeDefs: typeDefs,
-    resolvers: resolvers
-})
+  typeDefs: typeDefs,
+  resolvers: resolvers,
+});

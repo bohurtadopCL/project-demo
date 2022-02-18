@@ -1,5 +1,3 @@
-const Categories = [
-    "FOOD", "TECH", "TOYS"
-];
+const Categories = ['FOOD', 'TECH', 'TOYS'];
 
 module.exports = Categories;
