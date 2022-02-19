@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const logger = require('@condor-labs/logger');
+const { healthMonitor } = require('@condor-labs/health-middleware');
 const config = require('config');
 const apiRouter = require('./routes/index');
 
@@ -12,6 +13,7 @@ mongoose
   .then(() => logger.log('MongoDB Connected...'))
   .catch((err) => logger.log(err));
 
+healthMonitor(app);
 app.use(express.json());
 
 app.get('/', (req, res) => {
@@ -22,4 +24,4 @@ app.get('/', (req, res) => {
 
 app.use('/api/v1', apiRouter);
 
-app.listen(3000, () => logger.log('Server on port 3000'));
+module.exports = app;

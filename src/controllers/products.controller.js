@@ -23,7 +23,7 @@ async function codeAlreadyExists(req) {
 
 // Create a new product
 exports.save = async function (req, res) {
-  logger.log('\t', req.method, '\t', req.originalUrl);
+  logger.log(req.method, req.originalUrl);
   try {
     if (await codeAlreadyExists(req)) {
       res.status(400).send('Invalid product code');
@@ -52,7 +52,7 @@ exports.save = async function (req, res) {
 
 // Returns all the products
 exports.find = async function (req, res) {
-  logger.log('\t', req.method, '\t', req.originalUrl);
+  logger.log(req.method, req.originalUrl);
   try {
     // Looking for products in cache
     const products = await client.get('products');
@@ -80,7 +80,7 @@ exports.find = async function (req, res) {
 
 // Returns a product by an id provided
 exports.findById = async function (req, res) {
-  logger.log('\t', req.method, '\t', req.originalUrl);
+  logger.log(req.method, req.originalUrl);
   try {
     if (mongoose.Types.ObjectId.isValid(req.params._id)) {
       const product = await Product.findById(req.params);
@@ -101,7 +101,7 @@ exports.findById = async function (req, res) {
 
 // Updates a product
 exports.update = async function (req, res) {
-  logger.log('\t', req.method, '\t', req.originalUrl);
+  logger.log(req.method, req.originalUrl);
   try {
     if (await codeAlreadyExists(req)) {
       res.status(400).send('Invalid product code');
@@ -125,7 +125,7 @@ exports.update = async function (req, res) {
 
 // Deletes a product on database
 exports.delete = async function (req, res) {
-  logger.log('\t', req.method, '\t', req.originalUrl);
+  logger.log(req.method, req.originalUrl);
   try {
     if (mongoose.Types.ObjectId.isValid(req.params._id)) {
       Product.findByIdAndDelete(req.params)

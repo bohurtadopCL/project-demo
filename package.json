@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "lint": "eslint .",
     "format": "prettier \"**/*.{js,jsx,ts,tsx}\" --write",
     "lint-global": "echo \"Prettier is running...\" && prettier \"**/*.{js,jsx,ts,tsx}\" --write && echo \"ESlint is running...\" && eslint ."
@@ -22,9 +22,11 @@
     "express-graphql": "^0.12.0",
     "graphql": "^15.8.0",
     "graphql-tools": "^8.2.0",
+    "jest": "^27.5.1",
     "mongoose": "^6.2.1",
     "pm2": "^5.2.0",
-    "redis": "^4.0.3"
+    "redis": "^4.0.3",
+    "supertest": "^6.2.2"
   },
   "devDependencies": {
     "@babel/core": "~7.15.5",

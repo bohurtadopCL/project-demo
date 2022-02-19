@@ -174,7 +174,7 @@ exports.findById = async function (req, res) {
           },
         },
       ]);
-      if (!shoppingCar) {
+      if (!shoppingCar.length) {
         res.status(404).send('Shopping car not found');
       } else {
         shoppingCar[0].href = req.originalUrl;
