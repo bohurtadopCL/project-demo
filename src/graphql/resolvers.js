@@ -1,7 +1,9 @@
+const Product = require('../models/Product');
+
 const resolvers = {
   Query: {
-    hello: () => {
-      return 'Shopping car demo project';
+    getProducts: async () => {
+      return await Product.find();
     },
   },
 };

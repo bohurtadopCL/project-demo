@@ -3,8 +3,16 @@ const resolvers = require('./resolvers');
 
 const typeDefs = `
 
-    type Query{
-        hello: String
+    type Product {
+        _id: String
+        code: String
+        name: String
+        price: Int
+        category: String
+    }
+
+    type Query {
+        getProducts: [Product]
     }
 `;
 
