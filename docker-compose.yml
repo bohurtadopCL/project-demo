@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  redis-server:
+    image: "redis"
+  api:
+    build: ./
+    ports:
+      - "3000:3000"
