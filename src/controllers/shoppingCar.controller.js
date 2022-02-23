@@ -176,9 +176,9 @@ exports.find = async function (req, res) {
         i.href = req.baseUrl.concat('/', i._id);
       }
       if (res) {
-        res.send(items.slice(req.params.offset || 0, req.params.limit || 25));
+        res.send(items.slice(req.params.offset || 0, req.params.limit + req.params.offset || 25));
       } else {
-        return items.slice(req.params.offset || 0, req.params.limit || 25);
+        return items.slice(req.params.offset || 0, req.params.limit + req.params.offset || 25);
       }
     } else {
       sendError('Unable to find shopping cars', res, 500);

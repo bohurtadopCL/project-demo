@@ -74,9 +74,9 @@ exports.find = async function (req, res) {
         item._doc = { href: req.baseUrl.concat('/', item._doc._id), ...item._doc };
       }
       if (res) {
-        res.send(products.slice(req.params.offset || 0, req.params.limit || 25));
+        res.send(products.slice(req.params.offset || 0, req.params.limit + req.params.offset || 25));
       } else {
-        return products.slice(req.params.offset || 0, req.params.limit || 25);
+        return products.slice(req.params.offset || 0, req.params.limit + req.params.offset || 25);
       }
     } else {
       sendError('Internal server error', res, 500);
