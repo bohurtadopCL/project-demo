@@ -39,7 +39,7 @@ const typeDefs = `
     }
 
     type Query {
-        getProducts: [Product]
+        getProducts(offset: Int, limit: Int): [Product]
     }
 
     type Query {
@@ -62,7 +62,7 @@ const typeDefs = `
     }
 
     type Query {
-        getShoppingCars: [ShoppingCar]
+        getShoppingCars(offset: Int, limit: Int): [ShoppingCar]
     }
 
     type Query {

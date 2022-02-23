@@ -3,14 +3,18 @@ const shoppingCarController = require('../controllers/shoppingCar.controller');
 
 const resolvers = {
   Query: {
-    getProducts: async (_, _input, _args) => {
+    getProducts: async (_, { offset, limit }, _args) => {
+      _args.params.offset = offset;
+      _args.params.limit = limit;
       return await productsController.find(_args);
     },
     getProduct: async (_, { id }, _args) => {
       _args.params._id = id;
       return await productsController.findById(_args);
     },
-    getShoppingCars: async (_, _input, _args) => {
+    getShoppingCars: async (_, { offset, limit }, _args) => {
+      _args.params.offset = offset;
+      _args.params.limit = limit;
       return await shoppingCarController.find(_args);
     },
     getShoppingCar: async (_, { id }, _args) => {
