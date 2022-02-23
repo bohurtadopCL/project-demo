@@ -74,9 +74,9 @@ exports.find = async function (req, res) {
         item._doc = { href: req.baseUrl.concat('/', item._doc._id), ...item._doc };
       }
       if (res) {
-        res.send(products);
+        res.send(products.slice(0, 25));
       } else {
-        return products;
+        return products.slice(0, 25);
       }
     } else {
       sendError('Internal server error', res, 500);
