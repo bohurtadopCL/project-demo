@@ -10,6 +10,20 @@ function isAValidCategory(req) {
   return categoryName ? Categories.includes(categoryName) : false;
 }
 
+function isAValidPrice(req) {
+  const price = req.body.price ? req.body.price : null;
+  return price ? (price > 0 ? true : false) : false;
+}
+
+// Returns an error to restful or graphql methods
+function sendError(message, res, statusCode) {
+  if (res) {
+    res.status(statusCode).send({ message: message });
+  } else {
+    throw new Error(message);
+  }
+}
+
 // Looks if product code already exists on database
 async function codeAlreadyExists(req) {
   const productCode = req.body.code ? req.body.code : null;
@@ -26,27 +40,27 @@ exports.save = async function (req, res) {
   logger.log(req.method, req.originalUrl);
   try {
     if (await codeAlreadyExists(req)) {
-      res.status(400).send('Invalid product code');
+      sendError('Invalid product code', res, 400);
     } else if (!isAValidCategory(req)) {
-      res.status(400).send('Invalid category');
+      sendError('Invalid category', res, 400);
+    } else if (!isAValidPrice(req)) {
+      sendError('Invalid price', res, 400);
     } else {
       const newProduct = new Product(req.body);
-      newProduct
-        .save()
-        .then((r) => {
-          res.setHeader('Location', req.baseUrl.concat('/', r._id));
-          res.status(201).send();
-        })
-        .catch((err) => {
-          res.status(400).send(err.message);
-          logger.log(err.message);
-        });
-      // Deletes products on cache
-      await client.expireAt('products', 0);
+      const item = await newProduct.save();
+      if (item) {
+        if (res) {
+          res.setHeader('Location', req.baseUrl.concat('/', item._id));
+          res.status(201).send(item);
+        } else {
+          return item;
+        }
+      } else {
+        sendError('Error saving product', res, 500);
+      }
     }
   } catch (err) {
-    logger.log(err.message);
-    res.status(500).send();
+    sendError(err.message, res, 500);
   }
 };
 
@@ -54,27 +68,21 @@ exports.save = async function (req, res) {
 exports.find = async function (req, res) {
   logger.log(req.method, req.originalUrl);
   try {
-    // Looking for products in cache
-    const products = await client.get('products');
+    const products = await Product.find();
     if (products) {
-      res.send(JSON.parse(products));
+      for (const item of products) {
+        item._doc = { href: req.baseUrl.concat('/', item._doc._id), ...item._doc };
+      }
+      if (res) {
+        res.send(products);
+      } else {
+        return products;
+      }
     } else {
-      Product.find()
-        .then((items) => {
-          for (const item of items) {
-            item._doc = { href: req.baseUrl.concat('/', item._doc._id), ...item._doc };
-          }
-          client.setEx('products', 600, JSON.stringify(items));
-          res.send(items);
-        })
-        .catch((err) => {
-          res.send(err.message);
-          logger.log(err.message);
-        });
+      sendError('Internal server error', res, 500);
     }
   } catch (err) {
-    logger.log(err.message);
-    res.status(500).send();
+    sendError(err.message, res, 500);
   }
 };
 
@@ -83,19 +91,28 @@ exports.findById = async function (req, res) {
   logger.log(req.method, req.originalUrl);
   try {
     if (mongoose.Types.ObjectId.isValid(req.params._id)) {
-      const product = await Product.findById(req.params);
-      if (!product) {
-        res.status(404).send('Product not found');
+      let product = await client.get(req.params._id); // Try to fetch the product from cache it exists
+      if (product) {
+        if (res) {
+          res.send(JSON.parse(product));
+        } else {
+          return JSON.parse(product);
+        }
       } else {
-        product._doc = { href: req.originalUrl, ...product._doc };
-        res.send(product);
+        product = await Product.findById(req.params);
+        if (!product) {
+          sendError('Product not found', res, 404);
+        } else {
+          product._doc = { href: req.originalUrl, ...product._doc };
+          client.setEx(product._doc._id, 600, JSON.stringify(product)); // Save the product in cache
+          return res ? res.send(product) : product;
+        }
       }
     } else {
-      res.status(400).send('Invalid product id');
+      sendError('Invalid product id', res, 400);
     }
   } catch (err) {
-    logger.log(err.message);
-    res.status(500).send();
+    sendError(err.message, res, 500);
   }
 };
 
@@ -103,23 +120,20 @@ exports.findById = async function (req, res) {
 exports.update = async function (req, res) {
   logger.log(req.method, req.originalUrl);
   try {
-    if (await codeAlreadyExists(req)) {
-      res.status(400).send('Invalid product code');
+    if (req.body.code && (await codeAlreadyExists(req))) {
+      sendError('Invalid product code', res, 400);
     } else if (!isAValidCategory(req)) {
-      res.status(400).send('Invalid category');
+      sendError('Invalid category', res, 400);
+    } else if (!isAValidPrice(req)) {
+      sendError('Invalid price', res, 400);
     } else {
-      Product.findByIdAndUpdate(req.params, req.body)
-        .then(() => res.send())
-        .catch((err) => {
-          res.status(400).send(err.message);
-          logger.log(err.message);
-        });
-      // Deletes products on cache
-      await client.expireAt('products', 0);
+      const response = await Product.findByIdAndUpdate(req.params, req.body);
+      await client.expireAt(req.params._id, 0); // Deletes product on cache
+      req.body._id = req.params._id;
+      return response ? (res ? res.send(req.body) : req.body) : sendError(response.message, res, 400);
     }
   } catch (err) {
-    logger.log(err.message);
-    res.status(500).send();
+    sendError(err.message, res, 500);
   }
 };
 
@@ -128,20 +142,21 @@ exports.delete = async function (req, res) {
   logger.log(req.method, req.originalUrl);
   try {
     if (mongoose.Types.ObjectId.isValid(req.params._id)) {
-      Product.findByIdAndDelete(req.params)
-        .then(() => {
-          res.send();
-        })
-        .catch((err) => {
-          res.status(500).send(err.message);
-        });
-      // Deletes products on cache
-      await client.expireAt('products', 0);
+      const response = await Product.findByIdAndDelete(req.params);
+      await client.expireAt(req.params._id, 0); // Deletes product on cache
+      if (response) {
+        if (res) {
+          res.send(response);
+        } else {
+          return response;
+        }
+      } else {
+        sendError('Product not found', res, 404);
+      }
     } else {
-      res.status(400).send('Invalid product id');
+      sendError('Invalid product id', res, 400);
     }
   } catch (err) {
-    logger.log(err.message);
-    res.status(500).send();
+    sendError(err.message, res, 500);
   }
 };

@@ -1,7 +1,9 @@
 const { mongoose } = require('@condor-labs/mongodb/src/mongodb');
 const logger = require('@condor-labs/logger');
+const client = require('../redis/redis');
 const Product = require('../models/Product');
 const ShoppingCar = require('../models/ShoppingCar');
+const { sendSignalToProcessName } = require('pm2');
 
 // Looks if shopping car code already exists on database
 async function codeAlreadyExists(req) {
@@ -12,6 +14,132 @@ async function codeAlreadyExists(req) {
       })
     : true;
   return oldShoppingCar ? true : false;
+}
+
+// Returns an error to restful or graphql methods
+function sendError(message, res, statusCode) {
+  if (res) {
+    res.status(statusCode).send({ message: message });
+  } else {
+    throw new Error(message);
+  }
+}
+
+// Lookup aggregate mongodb function to find all shopping cars
+async function findShoppingCars() {
+  return await ShoppingCar.aggregate([
+    {
+      $lookup: {
+        from: 'products',
+        let: {
+          p: '$products',
+        },
+        pipeline: [
+          {
+            $match: { $expr: { $in: ['$_id', '$$p._id'] } },
+          },
+          {
+            $project: {
+              _id: '$_id',
+              code: '$code',
+              name: '$name',
+              price: '$price',
+              category: '$category',
+              quantity: {
+                $let: {
+                  vars: {
+                    index: { $indexOfArray: ['$$p._id', '$_id'] },
+                  },
+                  in: {
+                    $let: {
+                      vars: {
+                        prod: { $arrayElemAt: ['$$p', '$$index'] },
+                      },
+                      in: '$$prod.quantity',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
+        as: 'products',
+      },
+    },
+    {
+      $set: {
+        totalPrice: {
+          $sum: {
+            $map: {
+              input: '$products',
+              as: 'product',
+              in: { $multiply: ['$$product.price', '$$product.quantity'] },
+            },
+          },
+        },
+      },
+    },
+  ]);
+}
+
+// Lookup aggregate mongodb function to find a shoppping car by id
+async function findShoppingCarById(id) {
+  return await ShoppingCar.aggregate([
+    {
+      $match: { $expr: { $eq: ['$_id', id] } },
+    },
+    {
+      $lookup: {
+        from: 'products',
+        let: {
+          p: '$products',
+        },
+        pipeline: [
+          {
+            $match: { $expr: { $in: ['$_id', '$$p._id'] } },
+          },
+          {
+            $project: {
+              _id: '$_id',
+              code: '$code',
+              name: '$name',
+              price: '$price',
+              category: '$category',
+              quantity: {
+                $let: {
+                  vars: {
+                    index: { $indexOfArray: ['$$p._id', '$_id'] },
+                  },
+                  in: {
+                    $let: {
+                      vars: {
+                        prod: { $arrayElemAt: ['$$p', '$$index'] },
+                      },
+                      in: '$$prod.quantity',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
+        as: 'products',
+      },
+    },
+    {
+      $set: {
+        totalPrice: {
+          $sum: {
+            $map: {
+              input: '$products',
+              as: 'product',
+              in: { $multiply: ['$$product.price', '$$product.quantity'] },
+            },
+          },
+        },
+      },
+    },
+  ]);
 }
 
 // Create a new shopping car
@@ -34,8 +162,7 @@ exports.save = async function (req, res) {
         });
     }
   } catch (err) {
-    logger.log(err.message);
-    res.status(500).send();
+    sendError(err.message, res, 500);
   }
 };
 
@@ -43,72 +170,21 @@ exports.save = async function (req, res) {
 exports.find = async function (req, res) {
   logger.log(req.method, req.originalUrl);
   try {
-    ShoppingCar.aggregate([
-      {
-        $lookup: {
-          from: 'products',
-          let: {
-            p: '$products',
-          },
-          pipeline: [
-            {
-              $match: { $expr: { $in: ['$_id', '$$p._id'] } },
-            },
-            {
-              $project: {
-                _id: '$_id',
-                code: '$code',
-                name: '$name',
-                price: '$price',
-                category: '$category',
-                quantity: {
-                  $let: {
-                    vars: {
-                      index: { $indexOfArray: ['$$p._id', '$_id'] },
-                    },
-                    in: {
-                      $let: {
-                        vars: {
-                          prod: { $arrayElemAt: ['$$p', '$$index'] },
-                        },
-                        in: '$$prod.quantity',
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          ],
-          as: 'products',
-        },
-      },
-      {
-        $set: {
-          totalPrice: {
-            $sum: {
-              $map: {
-                input: '$products',
-                as: 'product',
-                in: { $multiply: ['$$product.price', '$$product.quantity'] },
-              },
-            },
-          },
-        },
-      },
-    ])
-      .then((items) => {
-        for (const i of items) {
-          i.href = req.baseUrl.concat('/', i._id);
-        }
+    const items = await findShoppingCars();
+    if (items) {
+      for (const i of items) {
+        i.href = req.baseUrl.concat('/', i._id);
+      }
+      if (res) {
         res.send(items);
-      })
-      .catch((err) => {
-        res.send(err.message);
-        logger.log(err.message);
-      });
+      } else {
+        return items;
+      }
+    } else {
+      sendError('Unable to find shopping cars', res, 500);
+    }
   } catch (err) {
-    logger.log(err.message);
-    res.status(500).send();
+    sendError(err.message, res, 500);
   }
 };
 
@@ -118,74 +194,28 @@ exports.findById = async function (req, res) {
   try {
     if (mongoose.Types.ObjectId.isValid(req.params._id)) {
       const id = new mongoose.Types.ObjectId(req.params._id);
-      const shoppingCar = await ShoppingCar.aggregate([
-        {
-          $match: { $expr: { $eq: ['$_id', id] } },
-        },
-        {
-          $lookup: {
-            from: 'products',
-            let: {
-              p: '$products',
-            },
-            pipeline: [
-              {
-                $match: { $expr: { $in: ['$_id', '$$p._id'] } },
-              },
-              {
-                $project: {
-                  _id: '$_id',
-                  code: '$code',
-                  name: '$name',
-                  price: '$price',
-                  category: '$category',
-                  quantity: {
-                    $let: {
-                      vars: {
-                        index: { $indexOfArray: ['$$p._id', '$_id'] },
-                      },
-                      in: {
-                        $let: {
-                          vars: {
-                            prod: { $arrayElemAt: ['$$p', '$$index'] },
-                          },
-                          in: '$$prod.quantity',
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            ],
-            as: 'products',
-          },
-        },
-        {
-          $set: {
-            totalPrice: {
-              $sum: {
-                $map: {
-                  input: '$products',
-                  as: 'product',
-                  in: { $multiply: ['$$product.price', '$$product.quantity'] },
-                },
-              },
-            },
-          },
-        },
-      ]);
-      if (!shoppingCar.length) {
-        res.status(404).send('Shopping car not found');
+      let shoppingCar = await client.get(id); // Try to fetch the shopping car from cache if exists
+      if (shoppingCar) {
+        if (res) {
+          res.send(JSON.parse(shoppingCar));
+        } else {
+          return JSON.parse(shoppingCar);
+        }
       } else {
-        shoppingCar[0].href = req.originalUrl;
-        res.send(shoppingCar[0]);
+        shoppingCar = await findShoppingCarById(id);
+        if (!shoppingCar.length) {
+          sendError('Shopping car not found', res, 404);
+        } else {
+          shoppingCar[0].href = req.originalUrl;
+          await client.setEx(id, 600, JSON.stringify(shoppingCar[0])); // Save the shopping car on cache
+          return res ? res.send(shoppingCar[0]) : shoppingCar[0];
+        }
       }
     } else {
-      res.status(400).send('Invalid shopping car id');
+      sendError('Invalid shopping car id', res, 400);
     }
   } catch (err) {
-    logger.log(err.message);
-    res.status(500).send();
+    sendError(err.message, res, 500);
   }
 };
 
@@ -196,16 +226,20 @@ exports.update = async function (req, res) {
     if (codeAlreadyExists(req)) {
       res.status(400).send('Invalid shopping car code');
     } else {
-      ShoppingCar.findByIdAndUpdate(req.params, req.body)
-        .then(() => res.send())
-        .catch((err) => {
-          res.status(400).send(err.message);
-          logger.log(err.message);
-        });
+      const response = ShoppingCar.findByIdAndUpdate(req.params, req.body);
+      await client.expireAt(req.params._id, 0); // Deletes the shopping car from cache
+      if (response) {
+        if (res) {
+          res.send(response);
+        } else {
+          return response;
+        }
+      } else {
+        sendError('Internal server error', res, 500);
+      }
     }
   } catch (err) {
-    logger.log(err.message);
-    res.status(500).send();
+    sendError(err.message, res, 500);
   }
 };
 
@@ -214,20 +248,22 @@ exports.delete = async function (req, res) {
   logger.log(req.method, req.originalUrl);
   try {
     if (mongoose.Types.ObjectId.isValid(req.params._id)) {
-      ShoppingCar.findByIdAndDelete(req.params)
-        .then(() => {
-          res.send();
-        })
-        .catch((err) => {
-          res.status(400).send(err.message);
-          logger.log(err.message);
-        });
+      const response = await ShoppingCar.findByIdAndDelete(req.params);
+      await client.expireAt(req.params._id, 0); // Deletes the shopping car from cache
+      if (response) {
+        if (res) {
+          res.send(response);
+        } else {
+          return response;
+        }
+      } else {
+        sendError('Internal server error', res, 500);
+      }
     } else {
-      res.status(400).send('Invalid shopping car id');
+      sendError('Invalid shopping car id', res, 400);
     }
   } catch (err) {
-    logger.log(err.message);
-    res.status(500).send();
+    sendError(err.message, res, 500);
   }
 };
 
@@ -239,9 +275,9 @@ exports.addProduct = async function (req, res) {
       const shoppingCar = await ShoppingCar.findById(req.params._id);
       let product = await Product.findById(req.params._pid);
       if (!shoppingCar) {
-        res.status(400).send('Shopping car not found');
+        sendError('Shopping car not found', res, 400);
       } else if (!product) {
-        res.status(400).send('Product not found');
+        sendError('Product not found', res, 400);
       } else {
         const products = shoppingCar._doc.products;
         product = { ...product._doc, quantity: req.body.quantity || 1 };
@@ -249,22 +285,26 @@ exports.addProduct = async function (req, res) {
         if (!found) {
           products.push(product);
         }
-        ShoppingCar.findByIdAndUpdate(req.params, {
+        const response = await ShoppingCar.findByIdAndUpdate(req.params, {
           products: products,
-        })
-          .then(() => {
-            res.send();
-          })
-          .catch((err) => {
-            res.status(500).send(err.message);
-          });
+        });
+        await client.expireAt(req.params._id, 0); // Deletes the shopping car from cache
+        if (response) {
+          const updatedShoppingCar = await findShoppingCarById(new mongoose.Types.ObjectId(req.params._id));
+          if (res) {
+            res.send(updatedShoppingCar[0]);
+          } else {
+            return updatedShoppingCar[0];
+          }
+        } else {
+          sendError('Internal server error', res, 500);
+        }
       }
     } else {
-      res.status(400).send('Invalid object ids');
+      sendError('Invalid object ids', res, 400);
     }
   } catch (err) {
-    logger.log(err);
-    res.status(500).send();
+    sendError(err.message, res, 500);
   }
 };
 
@@ -276,9 +316,9 @@ exports.deleteProduct = async function (req, res) {
       const shoppingCar = await ShoppingCar.findById(req.params._id);
       let product = await Product.findById(req.params._pid);
       if (!shoppingCar) {
-        res.status(400).send('Shopping car not found');
+        sendError('Shopping car not found', res, 400);
       } else if (!product) {
-        res.status(400).send('Product not found');
+        sendError('Product not found', res, 400);
       } else {
         const products = shoppingCar._doc.products;
         product = { ...product._doc, quantity: req.body.quantity };
@@ -295,21 +335,25 @@ exports.deleteProduct = async function (req, res) {
             }
           }
         });
-        ShoppingCar.findByIdAndUpdate(req.params, {
+        const response = await ShoppingCar.findByIdAndUpdate(req.params, {
           products: products,
-        })
-          .then(() => {
-            res.send();
-          })
-          .catch((err) => {
-            res.status(500).send(err.message);
-          });
+        });
+        await client.expireAt(req.params._id, 0); // Deletes the shopping car from cache
+        if (response) {
+          const updatedShoppingCar = await findShoppingCarById(new mongoose.Types.ObjectId(req.params._id));
+          if (res) {
+            res.send(updatedShoppingCar[0]);
+          } else {
+            return updatedShoppingCar[0];
+          }
+        } else {
+          sendError('Internal server error', res, 500);
+        }
       }
     } else {
-      res.status(400).send('Invalid object ids');
+      sendSignalToProcessName('Invalid object ids', res, 400);
     }
   } catch (err) {
-    logger.log(err);
-    res.status(500).send();
+    sendError(err.message, res, 500);
   }
 };

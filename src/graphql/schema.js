@@ -11,8 +11,86 @@ const typeDefs = `
         category: String
     }
 
+    type ShoppingCarProduct {
+        _id: String
+        code: String
+        name: String
+        price: Int
+        category: String
+        quantity: Int
+    }
+
+    type ShoppingCar {
+        _id: String
+        code: String
+        products: [ShoppingCarProduct]
+        totalPrice: Int
+    }
+
+    input ProductInput {
+        code: String
+        name: String
+        price: Int
+        category: String
+    }
+
+    input ShoppingCarInput {
+        code: String
+    }
+
     type Query {
         getProducts: [Product]
+    }
+
+    type Query {
+        getProduct(id: String): Product
+    }
+
+    type Mutation {
+        saveProduct(input: ProductInput): Product
+    }
+
+    type Mutation {
+        updateProduct(
+            id: String
+            input: ProductInput
+        ): Product
+    }
+
+    type Mutation {
+        deleteProduct(id: String): Product
+    }
+
+    type Query {
+        getShoppingCars: [ShoppingCar]
+    }
+
+    type Query {
+        getShoppingCar(id: String): ShoppingCar
+    }
+
+    type Mutation {
+        saveShoppingCar(input: ShoppingCarInput): ShoppingCar
+    }
+
+    type Mutation {
+        deleteShoppingCar(id: String): ShoppingCar
+    }
+
+    type Mutation {
+        addProductToShoppingCar(
+            shoppingCarId: String
+            productId: String
+            quantity: Int
+        ): ShoppingCar
+    }
+
+    type Mutation {
+        deleteProductFromShoppingCar(
+            shoppingCarId: String
+            productId: String
+            quantity: Int
+        ): ShoppingCar
     }
 `;
 
