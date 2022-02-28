@@ -1,60 +1,42 @@
-const productsController = require('../controllers/products.controller');
-const shoppingCarController = require('../controllers/shoppingCar.controller');
+const productsRepository = require('../repositories/products.repository');
+const shoppingCarsRepository = require('../repositories/shoppingCars.repository');
 
 const resolvers = {
   Query: {
     getProducts: async (_, { offset, limit }, _args) => {
-      _args.params.offset = offset;
-      _args.params.limit = limit;
-      return await productsController.find(_args);
+      return await productsRepository.find(_args, offset, limit);
     },
     getProduct: async (_, { id }, _args) => {
-      _args.params._id = id;
-      return await productsController.findById(_args);
+      return await productsRepository.findById(_args, id);
     },
     getShoppingCars: async (_, { offset, limit }, _args) => {
-      _args.params.offset = offset;
-      _args.params.limit = limit;
-      return await shoppingCarController.find(_args);
+      return await shoppingCarsRepository.find(_args, offset, limit);
     },
     getShoppingCar: async (_, { id }, _args) => {
-      _args.params._id = id;
-      return await shoppingCarController.findById(_args);
+      return await shoppingCarsRepository.findById(_args, id);
     },
   },
   Mutation: {
     saveProduct: async (_, { input }, _args) => {
-      _args.body = input;
-      return await productsController.save(_args);
+      return await productsRepository.save(_args, input);
     },
     updateProduct: async (_, { id, input }, _args) => {
-      _args.body = input;
-      _args.params._id = id;
-      return await productsController.update(_args);
+      return await productsRepository.update(_args, id, input);
     },
     deleteProduct: async (_, { id }, _args) => {
-      _args.params._id = id;
-      return await productsController.delete(_args);
+      return await productsRepository.delete(_args, id);
     },
     saveShoppingCar: async (_, { input }, _args) => {
-      _args.body = input;
-      return await shoppingCarController.save(_args);
+      return await shoppingCarsRepository.save(_args, input);
     },
     deleteShoppingCar: async (_, { id }, _args) => {
-      _args.params._id = id;
-      return await shoppingCarController.delete(_args);
+      return await shoppingCarsRepository.delete(_args, id);
     },
     addProductToShoppingCar: async (_, { shoppingCarId, productId, quantity }, _args) => {
-      _args.params._id = shoppingCarId;
-      _args.params._pid = productId;
-      _args.body.quantity = quantity;
-      return await shoppingCarController.addProduct(_args);
+      return await shoppingCarsRepository.addProduct(_args, shoppingCarId, productId, quantity);
     },
     deleteProductFromShoppingCar: async (_, { shoppingCarId, productId, quantity }, _args) => {
-      _args.params._id = shoppingCarId;
-      _args.params._pid = productId;
-      _args.body.quantity = quantity;
-      return await shoppingCarController.deleteProduct(_args);
+      return await shoppingCarsRepository.deleteProduct(_args, shoppingCarId, productId, quantity);
     },
   },
 };

@@ -28,10 +28,10 @@ const typeDefs = `
     }
 
     input ProductInput {
-        code: String
-        name: String
-        price: Int
-        category: String
+        code: String!
+        name: String!
+        price: Int!
+        category: String!
     }
 
     input ShoppingCarInput {

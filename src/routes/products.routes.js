@@ -1,12 +1,12 @@
 const express = require('express');
-const controller = require('../controllers/products.controller');
+const repository = require('../repositories/products.repository');
 
 const productsRoutes = express.Router();
 
-productsRoutes.get('/', controller.find);
-productsRoutes.post('/', controller.save);
-productsRoutes.get('/:_id', controller.findById);
-productsRoutes.put('/:_id', controller.update);
-productsRoutes.delete('/:_id', controller.delete);
+productsRoutes.get('/', repository.find);
+productsRoutes.post('/', repository.save);
+productsRoutes.get('/:_id', repository.findById);
+productsRoutes.put('/:_id', repository.update);
+productsRoutes.delete('/:_id', repository.delete);
 
 module.exports = productsRoutes;
