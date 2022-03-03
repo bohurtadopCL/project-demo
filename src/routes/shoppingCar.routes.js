@@ -1,14 +1,14 @@
 const express = require('express');
-const repository = require('../repositories/shoppingCars.repository');
+const controller = require('../controllers/shoppingCar.controller');
 
 const shoppingCarsRoutes = express.Router();
 
-shoppingCarsRoutes.get('/', repository.find);
-shoppingCarsRoutes.post('/', repository.save);
-shoppingCarsRoutes.get('/:_id', repository.findById);
-shoppingCarsRoutes.put('/:_id', repository.update);
-shoppingCarsRoutes.delete('/:_id', repository.delete);
-shoppingCarsRoutes.post('/:_id/products/:_pid', repository.addProduct);
-shoppingCarsRoutes.delete('/:_id/products/:_pid', repository.deleteProduct);
+shoppingCarsRoutes.get('/', controller.find);
+shoppingCarsRoutes.post('/', controller.save);
+shoppingCarsRoutes.get('/:_id', controller.findById);
+shoppingCarsRoutes.put('/:_id', controller.update);
+shoppingCarsRoutes.delete('/:_id', controller.delete);
+shoppingCarsRoutes.post('/:_id/products/:_pid', controller.addProduct);
+shoppingCarsRoutes.delete('/:_id/products/:_pid', controller.deleteProduct);
 
 module.exports = shoppingCarsRoutes;
