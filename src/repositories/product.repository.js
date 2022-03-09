@@ -65,7 +65,7 @@ exports.findByIdAndUpdate = async function (id, input) {
 exports.findByIdAndDelete = async function (id) {
   try {
     const response = await Product.findByIdAndDelete(id);
-    if (response) {
+    if (!response) {
       throw new Error('Product not found');
     }
     await cacheController.expire(id, 0); // Deletes product on cache
